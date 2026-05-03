@@ -1,1 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+env/
+venv/
+.venv/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code
+.claude/settings.local.json
+
+# IDE
 .idea/*
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
