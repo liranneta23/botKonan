@@ -10,6 +10,7 @@ import anthropic
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 app = FastAPI(title="Haverim Mehalzim Intake Coordinator")
@@ -225,3 +226,6 @@ async def chat(request: ChatRequest):
 async def reset(request: ResetRequest):
     conversations.pop(request.session_id, None)
     return {"status": "ok"}
+
+
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")

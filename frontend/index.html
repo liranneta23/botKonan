@@ -445,6 +445,11 @@
 <script>
 marked.setOptions({ gfm: true, breaks: true });
 
+// ── API Base ───────────────────────────────────────────────────────
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000'
+    : '';
+
 // ── State ─────────────────────────────────────────────────────────
 const sessionId   = `sar_${Date.now()}`;
 let incidentSeq   = Math.floor(Math.random() * 900) + 100;
@@ -652,7 +657,7 @@ async function sendMessage() {
     let buffer    = '';
 
     try {
-        const resp = await fetch('http://localhost:8000/api/chat', {
+        const resp = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text, session_id: sessionId }),
@@ -702,7 +707,7 @@ function finalizeReport() {
 async function newIncident() {
     if (!confirm('לפתוח אירוע חדש? הפעולה תמחק את השיחה הנוכחית.')) return;
 
-    await fetch('http://localhost:8000/api/reset', {
+    await fetch(`${API_BASE}/api/reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
