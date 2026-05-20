@@ -269,6 +269,61 @@
         ::-webkit-scrollbar-track  { background: transparent; }
         ::-webkit-scrollbar-thumb  { background: var(--border); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* ── Mobile menu button (hidden on desktop) ─────────────── */
+        #menu-toggle {
+            display: none;
+            background: none; border: none;
+            color: var(--text); font-size: 22px;
+            cursor: pointer; padding: 4px 8px;
+            line-height: 1;
+        }
+
+        /* ── Responsive — mobile (≤768px) ───────────────────────── */
+        @media (max-width: 768px) {
+
+            /* Header */
+            .header { padding: 0 12px; height: 52px; }
+            .org-name { font-size: 12px; letter-spacing: 1px; }
+            .sub-title { display: none; }
+            .incident-badge { padding: 3px 10px; }
+            .incident-number { font-size: 13px; }
+            .timer { font-size: 15px; }
+            .timer-label { display: none; }
+            #menu-toggle { display: block; }
+
+            /* Layout: stack vertically */
+            .layout { flex-direction: column; }
+
+            /* Sidebar: hidden by default, slides in as overlay */
+            .sidebar {
+                position: fixed;
+                top: 52px; left: 0;
+                width: 100%; height: calc(100vh - 52px);
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform .3s ease;
+                min-width: unset;
+            }
+            .sidebar.open { transform: translateX(0); }
+
+            /* Chat: full width */
+            .chat-container { width: 100%; }
+
+            /* Messages */
+            #messages { padding: 12px; gap: 10px; }
+            .bubble { font-size: 13px; max-width: 95%; }
+            .bot .bubble { width: 95%; }
+
+            /* Input area */
+            .input-area { padding: 10px 12px; gap: 8px; }
+            #input { font-size: 13px; min-height: 44px; }
+            #btn-send { padding: 9px 14px; font-size: 11px; }
+            .kbd-hint { display: none; }
+
+            /* Sidebar actions buttons — bigger touch targets */
+            .btn { padding: 12px 14px; font-size: 13px; }
+        }
     </style>
 </head>
 <body>
@@ -276,6 +331,7 @@
 <!-- ── Header ──────────────────────────────────────────────────── -->
 <header class="header">
     <div class="header-left">
+        <button id="menu-toggle" onclick="toggleSidebar()" title="שדות חובה">☰</button>
         <div class="logo">🚁</div>
         <div>
             <div class="org-name">HAVERIM MEHALZIM</div>
@@ -466,8 +522,8 @@ function updateChecklist(text) {
         return;
     }
 
-    const recordedRx = /✅\s*נקלט:?\s*\n([\s\S]*?)(?=\n\*\*⚠️|\*\*⚠️|\n⚠️|---)/i;
-    const neededRx   = /⚠️\s*חסר.*?:\s*\n([\s\S]*?)(?=💬|---|\n\*\*💬)/i;
+    const recordedRx = /✅[^\n]*נקלט[^\n]*\n([\s\S]*?)(?=⚠️|---)/i;
+    const neededRx   = /⚠️[^\n]*חסר[^\n]*\n([\s\S]*?)(?=💬|---)/i;
 
     const recordedText = (text.match(recordedRx) || ['',''])[1];
     const neededText   = (text.match(neededRx)   || ['',''])[1];
@@ -558,7 +614,18 @@ function escapeHtml(t) {
 
 async function copyReport(text, btn) {
     try {
-        await navigator.clipboard.writeText(text);
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
         btn.textContent = '✅ הועתק!';
         btn.classList.add('copied');
         setTimeout(() => {
@@ -585,7 +652,7 @@ async function sendMessage() {
     let buffer    = '';
 
     try {
-        const resp = await fetch('/api/chat', {
+        const resp = await fetch('http://localhost:8000/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: text, session_id: sessionId }),
@@ -635,7 +702,7 @@ function finalizeReport() {
 async function newIncident() {
     if (!confirm('לפתוח אירוע חדש? הפעולה תמחק את השיחה הנוכחית.')) return;
 
-    await fetch('/api/reset', {
+    await fetch('http://localhost:8000/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
@@ -651,6 +718,21 @@ async function newIncident() {
     $('incident-number').textContent = num;
     appendSystem(`אירוע חדש נפתח: <strong>${num}</strong> — ממתין למידע מהמתקשר.`);
 }
+
+// ── Mobile sidebar toggle ─────────────────────────────────────────
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar.classList.contains('open') &&
+        !sidebar.contains(e.target) &&
+        e.target.id !== 'menu-toggle') {
+        sidebar.classList.remove('open');
+    }
+});
 
 // ── Keyboard ──────────────────────────────────────────────────────
 $('input').addEventListener('keydown', e => {
