@@ -222,6 +222,7 @@
         }
         .copy-btn:hover { background: rgba(59,130,246,.1); }
         .copy-btn.copied { border-color: var(--success); color: var(--success); }
+        .copy-btn:disabled { opacity: .6; cursor: default; }
 
         /* Typing dots */
         .typing { display: flex; gap: 4px; padding: 4px 2px; }
@@ -629,8 +630,8 @@ function renderBotContent(el, text, isFinal) {
     if (isFinal && isReport) {
         const btn = document.createElement('button');
         btn.className = 'copy-btn';
-        btn.textContent = '📋 העתק דוח ללוח';
-        btn.onclick = () => copyReport(text, btn);
+        btn.textContent = '📋 העתק ושלח ל-Monday';
+        btn.onclick = () => copyAndSendMonday(text, btn);
         el.appendChild(btn);
     }
 
@@ -642,7 +643,11 @@ function escapeHtml(t) {
     return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-async function copyReport(text, btn) {
+async function copyAndSendMonday(text, btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ שולח...';
+
+    // copy to clipboard
     try {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(text);
@@ -656,13 +661,29 @@ async function copyReport(text, btn) {
             document.execCommand('copy');
             document.body.removeChild(ta);
         }
-        btn.textContent = '✅ הועתק!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-            btn.textContent = '📋 העתק דוח ללוח';
-            btn.classList.remove('copied');
-        }, 2500);
-    } catch { btn.textContent = 'שגיאה בהעתקה'; }
+    } catch { /* copy failed — continue to send */ }
+
+    // send to Monday
+    try {
+        const resp = await fetch(`${API_BASE}/api/monday`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ report_text: text, session_id: sessionId })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            btn.textContent = '✅ הועתק ונשלח ל-Monday';
+            btn.style.borderColor = 'var(--success)';
+            btn.style.color = 'var(--success)';
+            // stays disabled — cannot send twice
+        } else {
+            btn.textContent = '✅ הועתק | ⚠️ שגיאה ב-Monday';
+            btn.disabled = false;
+        }
+    } catch {
+        btn.textContent = '✅ הועתק | ⚠️ שגיאה ב-Monday';
+        btn.disabled = false;
+    }
 }
 
 // ── Send message ──────────────────────────────────────────────────
