@@ -21,15 +21,124 @@ from pydantic import BaseModel
 MONDAY_API_KEY  = os.getenv("MONDAY_API_KEY")
 MONDAY_BOARD_ID = int(os.getenv("MONDAY_BOARD_ID", "0"))
 
-COUNTRY_CODES = {
-    "תאילנד": "TH", "צרפת": "FR", "גרמניה": "DE", "ספרד": "ES",
-    "איטליה": "IT", "יוון": "GR", "הודו": "IN", 'ארה"ב': "US",
-    "אנגליה": "GB", "פורטוגל": "PT", "הונגריה": "HU", "פולין": "PL",
-    "טורקיה": "TR", "יפן": "JP", "אוסטרליה": "AU", "קנדה": "CA",
+# Hebrew country name → (ISO code, English name)
+COUNTRY_MAP: dict[str, tuple[str, str]] = {
+    "תאילנד":       ("TH", "Thailand"),
+    "צרפת":         ("FR", "France"),
+    "גרמניה":       ("DE", "Germany"),
+    "ספרד":         ("ES", "Spain"),
+    "איטליה":       ("IT", "Italy"),
+    "יוון":         ("GR", "Greece"),
+    "הודו":         ("IN", "India"),
+    'ארה"ב':        ("US", "United States"),
+    "אנגליה":       ("GB", "United Kingdom"),
+    "פורטוגל":      ("PT", "Portugal"),
+    "הונגריה":      ("HU", "Hungary"),
+    "פולין":        ("PL", "Poland"),
+    "טורקיה":       ("TR", "Turkey"),
+    "יפן":          ("JP", "Japan"),
+    "אוסטרליה":     ("AU", "Australia"),
+    "קנדה":         ("CA", "Canada"),
+    "הולנד":        ("NL", "Netherlands"),
+    "בלגיה":        ("BE", "Belgium"),
+    "שוויץ":        ("CH", "Switzerland"),
+    "אוסטריה":      ("AT", "Austria"),
+    "צ'כיה":        ("CZ", "Czech Republic"),
+    "רומניה":       ("RO", "Romania"),
+    "בולגריה":      ("BG", "Bulgaria"),
+    "קרואטיה":      ("HR", "Croatia"),
+    "מקסיקו":       ("MX", "Mexico"),
+    "ברזיל":        ("BR", "Brazil"),
+    "ארגנטינה":     ("AR", "Argentina"),
+    "פרו":          ("PE", "Peru"),
+    "קולומביה":     ("CO", "Colombia"),
+    "דרום אפריקה":  ("ZA", "South Africa"),
+    "מרוקו":        ("MA", "Morocco"),
+    "מצרים":        ("EG", "Egypt"),
+    "ירדן":         ("JO", "Jordan"),
+    "סינגפור":      ("SG", "Singapore"),
+    "וייטנאם":      ("VN", "Vietnam"),
+    "אינדונזיה":    ("ID", "Indonesia"),
+    "פיליפינים":    ("PH", "Philippines"),
+    "ניו זילנד":    ("NZ", "New Zealand"),
+    "דרום קוריאה":  ("KR", "South Korea"),
+    "סין":          ("CN", "China"),
+    "נפאל":         ("NP", "Nepal"),
+    "סרי לנקה":     ("LK", "Sri Lanka"),
+    "פורטוגל":      ("PT", "Portugal"),
+    "סלובניה":      ("SI", "Slovenia"),
+    "איסלנד":       ("IS", "Iceland"),
+    "נורווגיה":     ("NO", "Norway"),
+    "שבדיה":        ("SE", "Sweden"),
+    "פינלנד":       ("FI", "Finland"),
+    "דנמרק":        ("DK", "Denmark"),
+    "אירלנד":       ("IE", "Ireland"),
+    "סקוטלנד":      ("GB", "United Kingdom"),
 }
 
-def country_to_code(name: str) -> str:
-    return COUNTRY_CODES.get(name.strip(), "IL")
+def country_info(name: str) -> tuple[str, str]:
+    """Returns (ISO code, English name). Falls back to (IL, original name)."""
+    return COUNTRY_MAP.get(name.strip(), ("IL", name.strip()))
+
+# Bot event type → Monday label
+EVENT_TYPE_MAP = {
+    "פסיכולוגי": "נפשי",
+    "אנטישמי":   "אנטישמיות",
+}
+
+def normalize_event_type(t: str) -> str:
+    return EVENT_TYPE_MAP.get(t.strip(), t.strip())
+
+# Known insurance labels in Monday
+INSURANCE_LABELS = [
+    "מגדל", "כלל", "הפניקס", "הראל", "מנורה", "AIG",
+    "פספורטקארד", "ביטוח ישיר", "ביטוח לא ישראלי",
+    "ללא", "הייתה אזהרת מסע",
+]
+
+def normalize_insurance(name: str) -> str:
+    name = name.strip()
+    if name in INSURANCE_LABELS:
+        return name
+    for label in INSURANCE_LABELS:
+        if label in name or name in label:
+            return label
+    return "לא ידוע"
+
+# Gender normalization
+def normalize_gender(g: str) -> str:
+    g = g.strip()
+    if g in ("זכר", "גבר", "남"):
+        return "זכר"
+    if g in ("נקבה", "אישה"):
+        return "נקבה"
+    return "אחר"
+
+# Known operator labels in Monday
+OPERATOR_LABELS = [
+    "יוני", "גדעון", "עידו", "שחר דר", "גיא שדות", "זיו",
+    "מימי", "נופר", "עומר פאעל", "לי-אור", "הלל", "ניר",
+    "לירן", "דורון", "דור", "רון", "בר", "אביבית",
+]
+
+def normalize_operator(name: str) -> str:
+    name = name.strip()
+    if name in OPERATOR_LABELS:
+        return name
+    # partial match: "עומר" → "עומר פאעל"
+    for label in OPERATOR_LABELS:
+        if name in label or label in name:
+            return label
+    return "אחר"
+
+HEBREW_MONTHS = {
+    1: "ינואר", 2: "פברואר", 3: "מרץ", 4: "אפריל",
+    5: "מאי", 6: "יוני", 7: "יולי", 8: "אוגוסט",
+    9: "ספטמבר", 10: "אוקטובר", 11: "נובמבר", 12: "דצמבר",
+}
+
+def hebrew_month(dt: datetime) -> str:
+    return f"{HEBREW_MONTHS[dt.month]} {dt.year}"
 
 app = FastAPI(title="Haverim Mehalzim Intake Coordinator")
 
@@ -225,7 +334,7 @@ def parse_report(text: str) -> dict:
         "country":       get(r"מדינה:\s*(.+)"),
         "city":          get(r"עיר:\s*(.+)"),
         "date":          datetime.now(IL_TZ).strftime("%d/%m/%Y %H:%M"),
-        "month":         datetime.now(IL_TZ).strftime("%B"),
+        "month":         hebrew_month(datetime.now(IL_TZ)),
         "insurance":     get(r"חברת ביטוח:\s*(.+)"),
         "victim_phone":  v_phone,
         "reporter":      f"{r_name} | {r_phone}",
@@ -236,22 +345,28 @@ def parse_report(text: str) -> dict:
 
 
 async def create_monday_item(fields: dict) -> tuple[bool, str]:
-    item_name = f"{fields['event_type']} | {fields['country']} | {fields['date']}"
+    country_code, country_en = country_info(fields["country"])
+    event_type  = normalize_event_type(fields["event_type"])
+    insurance   = normalize_insurance(fields["insurance"])
+    gender      = normalize_gender(fields["victim_gender"])
+    operator    = normalize_operator(fields["operator"])
+
+    item_name = f"{event_type} | {fields['country']} | {fields['date']}"
     column_values = {
-        "status_mkmb1zc6":    {"label": fields["event_type"]},
+        "status_mkmb1zc6":    {"label": event_type},
         "color_mkvvrm1r":     {"label": "נפתח אירוע"},
         "status_mkmbjwef":    {"index": 0},
         "color_mkmby5dg":     {"label": fields["month"]},
-        "country_mkmb91h3":   {"countryCode": country_to_code(fields["country"]), "countryName": fields["country"]},
+        "country_mkmb91h3":   {"countryCode": country_code, "countryName": country_en},
         "location_mkmbv7be":  {"address": fields["city"]},
         "text_mkmbt7j5":      fields["date"],
         "long_text_mkpfvmh3": {"text": fields["description"]},
-        "color_mkmbwnzy":     {"label": fields["insurance"]},
+        "color_mkmbwnzy":     {"label": insurance},
         "phone_mkz3dr0y":     {"phone": fields["victim_phone"], "countryShortName": "IL"},
         "text_mkz3yv22":      fields["reporter"],
         "numeric_mkng2emx":   fields["victim_age"],
-        "color_mkngmw3":      {"label": fields["victim_gender"]},
-        "color_mkmbwakp":     {"label": fields["operator"]},
+        "color_mkngmw3":      {"label": gender},
+        "color_mkmbwakp":     {"label": operator},
     }
     mutation = """
     mutation ($board: ID!, $name: String!, $cols: JSON!) {
