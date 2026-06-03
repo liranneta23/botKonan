@@ -356,22 +356,40 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
 
     victim_name = fields.get("victim_name") or f"{event_type} | {fields['country']}"
     item_name = victim_name
-    column_values = {
-        "status_mkmb1zc6":    {"label": event_type},
-        "color_mkvvrm1r":     {"label": "נפתח אירוע"},
-        "status_mkmbjwef":    {"index": 0},
-        "color_mkmby5dg":     {"label": fields["month"]},
-        "country_mkmb91h3":   {"countryCode": country_code, "countryName": country_en},
-        "location_mkmbv7be":  {"address": fields["city"], "lat": 0, "lng": 0},
-        "text_mkmbt7j5":      fields["date"],
-        "long_text_mkpfvmh3": {"text": fields["description"]},
-        "color_mkmbwnzy":     {"label": insurance},
-        "phone_mkz3dr0y":     {"phone": fields["victim_phone"], "countryShortName": "IL"},
-        "text_mkz3yv22":      fields["reporter"],
-        "numeric_mkng2emx":   fields["victim_age"],
-        "color_mkngmw3":      {"label": gender},
-        "color_mkmbwakp":     {"label": operator},
+
+    def has(key: str) -> bool:
+        """True if the field exists and isn't a placeholder."""
+        val = fields.get(key, "").strip()
+        return bool(val) and val not in ("לא נמסר", "לא ידוע", "---", "N/A", "")
+
+    column_values: dict = {
+        "color_mkvvrm1r":  {"label": "נפתח אירוע"},
+        "status_mkmbjwef": {"index": 0},
     }
+    if event_type:
+        column_values["status_mkmb1zc6"] = {"label": event_type}
+    if fields.get("month"):
+        column_values["color_mkmby5dg"] = {"label": fields["month"]}
+    if country_code and has("country"):
+        column_values["country_mkmb91h3"] = {"countryCode": country_code, "countryName": country_en}
+    if has("city"):
+        column_values["location_mkmbv7be"] = {"address": fields["city"], "lat": 0, "lng": 0}
+    if has("date"):
+        column_values["text_mkmbt7j5"] = fields["date"]
+    if has("description"):
+        column_values["long_text_mkpfvmh3"] = {"text": fields["description"]}
+    if insurance and insurance != "לא ידוע" or insurance == "לא ידוע":
+        column_values["color_mkmbwnzy"] = {"label": insurance}
+    if has("victim_phone"):
+        column_values["phone_mkz3dr0y"] = {"phone": fields["victim_phone"], "countryShortName": "IL"}
+    if has("reporter"):
+        column_values["text_mkz3yv22"] = fields["reporter"]
+    if has("victim_age") and fields["victim_age"].strip().isdigit():
+        column_values["numeric_mkng2emx"] = fields["victim_age"]
+    if gender:
+        column_values["color_mkngmw3"] = {"label": gender}
+    if operator:
+        column_values["color_mkmbwakp"] = {"label": operator}
     mutation = """
     mutation ($board: ID!, $name: String!, $cols: JSON!) {
       create_item(board_id: $board, item_name: $name, column_values: $cols) { id }
