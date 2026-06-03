@@ -240,7 +240,7 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
     column_values = {
         "status_mkmb1zc6":    {"label": fields["event_type"]},
         "color_mkvvrm1r":     {"label": "נפתח אירוע"},
-        "status_mkmbjwef":    {"label": "פתוח"},
+        "status_mkmbjwef":    {"index": 0},
         "color_mkmby5dg":     {"label": fields["month"]},
         "country_mkmb91h3":   {"countryCode": country_to_code(fields["country"]), "countryName": fields["country"]},
         "location_mkmbv7be":  {"address": fields["city"]},
