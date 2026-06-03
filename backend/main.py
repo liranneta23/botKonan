@@ -3,6 +3,9 @@ import os
 import re
 from datetime import datetime
 from typing import AsyncGenerator
+from zoneinfo import ZoneInfo
+
+IL_TZ = ZoneInfo("Asia/Jerusalem")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -175,7 +178,7 @@ GPS / פרטים נוספים: [ערך]
 
 
 def build_system_prompt() -> str:
-    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    now = datetime.now(IL_TZ).strftime("%d/%m/%Y %H:%M")
     return SAR_SYSTEM_PROMPT_TEMPLATE.replace("<<NOW>>", now)
 
 
@@ -221,8 +224,8 @@ def parse_report(text: str) -> dict:
         "description":   get(r"תיאור:\s*(.+)"),
         "country":       get(r"מדינה:\s*(.+)"),
         "city":          get(r"עיר:\s*(.+)"),
-        "date":          datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "month":         datetime.now().strftime("%B"),
+        "date":          datetime.now(IL_TZ).strftime("%d/%m/%Y %H:%M"),
+        "month":         datetime.now(IL_TZ).strftime("%B"),
         "insurance":     get(r"חברת ביטוח:\s*(.+)"),
         "victim_phone":  v_phone,
         "reporter":      f"{r_name} | {r_phone}",
