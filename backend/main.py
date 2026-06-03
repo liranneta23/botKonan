@@ -316,9 +316,11 @@ def parse_report(text: str) -> dict:
     victim_sec   = re.search(r"פרטי הנפגע(.*?)(?=🏥|---)", text, re.DOTALL)
     reporter_sec = re.search(r"פרטי המדווח(.*?)(?=🧑|---)", text, re.DOTALL)
 
-    v_phone = ""
+    v_name, v_phone = "", ""
     if victim_sec:
+        vn = re.search(r"שם מלא:\s*(.+)", victim_sec.group(1))
         vm = re.search(r"טלפון:\s*(.+)", victim_sec.group(1))
+        v_name  = vn.group(1).strip() if vn else ""
         v_phone = vm.group(1).strip() if vm else ""
 
     r_name, r_phone = "", ""
@@ -336,6 +338,7 @@ def parse_report(text: str) -> dict:
         "date":          datetime.now(IL_TZ).strftime("%d/%m/%Y %H:%M"),
         "month":         hebrew_month(datetime.now(IL_TZ)),
         "insurance":     get(r"חברת ביטוח:\s*(.+)"),
+        "victim_name":   v_name,
         "victim_phone":  v_phone,
         "reporter":      f"{r_name} | {r_phone}",
         "victim_age":    get(r"גיל:\s*(.+)"),
@@ -351,7 +354,8 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
     gender      = normalize_gender(fields["victim_gender"])
     operator    = normalize_operator(fields["operator"])
 
-    item_name = f"{event_type} | {fields['country']} | {fields['date']}"
+    victim_name = fields.get("victim_name") or f"{event_type} | {fields['country']}"
+    item_name = victim_name
     column_values = {
         "status_mkmb1zc6":    {"label": event_type},
         "color_mkvvrm1r":     {"label": "נפתח אירוע"},
