@@ -235,7 +235,7 @@ def parse_report(text: str) -> dict:
     }
 
 
-async def create_monday_item(fields: dict) -> bool:
+async def create_monday_item(fields: dict) -> tuple[bool, str]:
     item_name = f"{fields['event_type']} | {fields['country']} | {fields['date']}"
     column_values = {
         "status_mkmb1zc6":    {"label": fields["event_type"]},
@@ -269,7 +269,13 @@ async def create_monday_item(fields: dict) -> bool:
             timeout=10.0,
         )
         data = r.json()
-        return "errors" not in data and data.get("data", {}).get("create_item") is not None
+        print("Monday response:", json.dumps(data, ensure_ascii=False))
+        if "errors" in data:
+            return False, str(data["errors"])
+        item = data.get("data", {}).get("create_item")
+        if item:
+            return True, ""
+        return False, "no create_item in response"
 
 
 async def stream_sar_response(messages: list, session_id: str) -> AsyncGenerator[str, None]:
@@ -321,8 +327,8 @@ async def chat(request: ChatRequest):
 @app.post("/api/monday")
 async def send_to_monday(request: MondayRequest):
     fields = parse_report(request.report_text)
-    success = await create_monday_item(fields)
-    return {"success": success}
+    success, error = await create_monday_item(fields)
+    return {"success": success, "error": error}
 
 
 @app.post("/api/reset")
