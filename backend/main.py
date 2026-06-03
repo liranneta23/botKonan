@@ -372,25 +372,36 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
     mutation ($board: ID!, $name: String!, $cols: JSON!) {
       create_item(board_id: $board, item_name: $name, column_values: $cols) { id }
     }"""
-    async with httpx.AsyncClient() as http:
-        r = await http.post(
-            "https://api.monday.com/v2",
-            headers={"Authorization": MONDAY_API_KEY, "Content-Type": "application/json"},
-            json={"query": mutation, "variables": {
-                "board": MONDAY_BOARD_ID,
-                "name":  item_name,
-                "cols":  json.dumps(column_values),
-            }},
-            timeout=10.0,
-        )
-        data = r.json()
-        print("Monday response:", json.dumps(data, ensure_ascii=False))
-        if "errors" in data:
-            return False, str(data["errors"])
-        item = data.get("data", {}).get("create_item")
-        if item:
-            return True, ""
-        return False, "no create_item in response"
+
+    async def _post(cols: dict) -> dict:
+        async with httpx.AsyncClient() as http:
+            r = await http.post(
+                "https://api.monday.com/v2",
+                headers={"Authorization": MONDAY_API_KEY, "Content-Type": "application/json"},
+                json={"query": mutation, "variables": {
+                    "board": MONDAY_BOARD_ID,
+                    "name":  item_name,
+                    "cols":  json.dumps(cols),
+                }},
+                timeout=10.0,
+            )
+            return r.json()
+
+    data = await _post(column_values)
+
+    # If month label doesn't exist in Monday → retry without it (leaves cell empty)
+    if "errors" in data and "color_mkmby5dg" in str(data["errors"]):
+        print("Month label not found, retrying without month column")
+        column_values.pop("color_mkmby5dg", None)
+        data = await _post(column_values)
+
+    print("Monday response:", json.dumps(data, ensure_ascii=False))
+    if "errors" in data:
+        return False, str(data["errors"])
+    item = data.get("data", {}).get("create_item")
+    if item:
+        return True, ""
+    return False, "no create_item in response"
 
 
 async def stream_sar_response(messages: list, session_id: str) -> AsyncGenerator[str, None]:
