@@ -358,7 +358,7 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
         "status_mkmbjwef":    {"index": 0},
         "color_mkmby5dg":     {"label": fields["month"]},
         "country_mkmb91h3":   {"countryCode": country_code, "countryName": country_en},
-        "location_mkmbv7be":  {"address": fields["city"]},
+        "location_mkmbv7be":  {"address": fields["city"], "lat": 0, "lng": 0},
         "text_mkmbt7j5":      fields["date"],
         "long_text_mkpfvmh3": {"text": fields["description"]},
         "color_mkmbwnzy":     {"label": insurance},
