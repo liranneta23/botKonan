@@ -201,7 +201,7 @@ class MondayRequest(BaseModel):
 
 def parse_report(text: str) -> dict:
     def get(pattern, default=""):
-        m = re.search(pattern, text, re.MULTILINE | re.DOTALL)
+        m = re.search(pattern, text, re.MULTILINE)
         return m.group(1).strip() if m else default
 
     victim_sec   = re.search(r"פרטי הנפגע(.*?)(?=🏥|---)", text, re.DOTALL)
