@@ -80,14 +80,27 @@ def country_info(name: str) -> tuple[str, str]:
     """Returns (ISO code, English name). Falls back to (IL, original name)."""
     return COUNTRY_MAP.get(name.strip(), ("IL", name.strip()))
 
-# Bot event type → Monday label
+# Valid Monday event type labels
+MONDAY_EVENT_LABELS = ["נפשי", "איתור", "רפואי", "אנטישמיות", "אחר", "חילוץ", "חברות מחלצות"]
+
+# Bot event type → Monday label (exact overrides)
 EVENT_TYPE_MAP = {
     "פסיכולוגי": "נפשי",
     "אנטישמי":   "אנטישמיות",
+    "פטירה":     "רפואי",
 }
 
 def normalize_event_type(t: str) -> str:
-    return EVENT_TYPE_MAP.get(t.strip(), t.strip())
+    t = t.strip()
+    # Exact match after explicit mapping
+    mapped = EVENT_TYPE_MAP.get(t, t)
+    if mapped in MONDAY_EVENT_LABELS:
+        return mapped
+    # Partial match — e.g. "פטירה / רפואי" contains "רפואי"
+    for label in MONDAY_EVENT_LABELS:
+        if label in t:
+            return label
+    return "אחר"
 
 # Known insurance labels in Monday
 INSURANCE_LABELS = [
