@@ -10,6 +10,7 @@ IL_TZ = ZoneInfo("Asia/Jerusalem")
 from dotenv import load_dotenv
 load_dotenv()
 
+import asyncio
 import anthropic
 import httpx
 from fastapi import FastAPI
@@ -74,11 +75,133 @@ COUNTRY_MAP: dict[str, tuple[str, str]] = {
     "דנמרק":        ("DK", "Denmark"),
     "אירלנד":       ("IE", "Ireland"),
     "סקוטלנד":      ("GB", "United Kingdom"),
+    # English input (in case operator writes in English)
+    "Thailand":      ("TH", "Thailand"),
+    "France":        ("FR", "France"),
+    "Germany":       ("DE", "Germany"),
+    "Spain":         ("ES", "Spain"),
+    "Italy":         ("IT", "Italy"),
+    "Greece":        ("GR", "Greece"),
+    "India":         ("IN", "India"),
+    "United States": ("US", "United States"),
+    "USA":           ("US", "United States"),
+    "UK":            ("GB", "United Kingdom"),
+    "United Kingdom":("GB", "United Kingdom"),
+    "England":       ("GB", "United Kingdom"),
+    "Portugal":      ("PT", "Portugal"),
+    "Hungary":       ("HU", "Hungary"),
+    "Poland":        ("PL", "Poland"),
+    "Turkey":        ("TR", "Turkey"),
+    "Japan":         ("JP", "Japan"),
+    "Australia":     ("AU", "Australia"),
+    "Canada":        ("CA", "Canada"),
+    "Netherlands":   ("NL", "Netherlands"),
+    "Belgium":       ("BE", "Belgium"),
+    "Switzerland":   ("CH", "Switzerland"),
+    "Austria":       ("AT", "Austria"),
+    "Czech Republic":("CZ", "Czech Republic"),
+    "Romania":       ("RO", "Romania"),
+    "Bulgaria":      ("BG", "Bulgaria"),
+    "Croatia":       ("HR", "Croatia"),
+    "Mexico":        ("MX", "Mexico"),
+    "Brazil":        ("BR", "Brazil"),
+    "Argentina":     ("AR", "Argentina"),
+    "Peru":          ("PE", "Peru"),
+    "Colombia":      ("CO", "Colombia"),
+    "South Africa":  ("ZA", "South Africa"),
+    "Morocco":       ("MA", "Morocco"),
+    "Egypt":         ("EG", "Egypt"),
+    "Jordan":        ("JO", "Jordan"),
+    "Singapore":     ("SG", "Singapore"),
+    "Vietnam":       ("VN", "Vietnam"),
+    "Indonesia":     ("ID", "Indonesia"),
+    "Philippines":   ("PH", "Philippines"),
+    "New Zealand":   ("NZ", "New Zealand"),
+    "South Korea":   ("KR", "South Korea"),
+    "China":         ("CN", "China"),
+    "Nepal":         ("NP", "Nepal"),
+    "Sri Lanka":     ("LK", "Sri Lanka"),
+    "Slovenia":      ("SI", "Slovenia"),
+    "Iceland":       ("IS", "Iceland"),
+    "Norway":        ("NO", "Norway"),
+    "Sweden":        ("SE", "Sweden"),
+    "Finland":       ("FI", "Finland"),
+    "Denmark":       ("DK", "Denmark"),
+    "Ireland":       ("IE", "Ireland"),
+    "Dubai":         ("AE", "United Arab Emirates"),
+    "UAE":           ("AE", "United Arab Emirates"),
+    "דובאי":         ("AE", "United Arab Emirates"),
+    "איחוד האמירויות": ("AE", "United Arab Emirates"),
 }
 
 def country_info(name: str) -> tuple[str, str]:
     """Returns (ISO code, English name). Falls back to (IL, original name)."""
-    return COUNTRY_MAP.get(name.strip(), ("IL", name.strip()))
+    name = name.strip()
+    if name in COUNTRY_MAP:
+        return COUNTRY_MAP[name]
+    # Try translate_location as fallback (handles country names that appear in city field)
+    # Return ("IL", name) — English name will be filled by translate_location if possible
+    en_name = CITY_MAP.get(name, name)  # CITY_MAP has some country names too
+    return ("IL", en_name)
+
+CITY_MAP = {
+    # תאילנד
+    "בנגקוק": "Bangkok", "פוקט": "Phuket", "קו סמוי": "Koh Samui",
+    "צ'יאנג מאי": "Chiang Mai", "פאי": "Pai", "קראבי": "Krabi",
+    # אירופה
+    "פריז": "Paris", "לונדון": "London", "ברלין": "Berlin",
+    "אמסטרדם": "Amsterdam", "ברצלונה": "Barcelona", "מדריד": "Madrid",
+    "רומא": "Rome", "מילאנו": "Milan", "וינה": "Vienna",
+    "בודפשט": "Budapest", "פראג": "Prague", "ורשה": "Warsaw",
+    "לישבון": "Lisbon", "אתונה": "Athens", "דבלין": "Dublin",
+    "ברוקסל": "Brussels", "זיריך": "Zurich", "ז'נבה": "Geneva",
+    "קופנהגן": "Copenhagen", "שטוקהולם": "Stockholm", "אוסלו": "Oslo",
+    "הלסינקי": "Helsinki", "ריגה": "Riga", "טאלין": "Tallinn",
+    "קרקוב": "Krakow", "בוקרשט": "Bucharest", "סופיה": "Sofia",
+    "זגרב": "Zagreb", "דובּרובניק": "Dubrovnik", "ספליט": "Split",
+    "רייקיאוויק": "Reykjavik", "ליסבון": "Lisbon",
+    # ארה"ב
+    "ניו יורק": "New York", "לוס אנג'לס": "Los Angeles",
+    "מיאמי": "Miami", "שיקגו": "Chicago", "לאס וגאס": "Las Vegas",
+    "סן פרנציסקו": "San Francisco", "בוסטון": "Boston",
+    "וושינגטון": "Washington DC", "סיאטל": "Seattle",
+    "יוטה": "Utah", "דנוור": "Denver", "אורלנדו": "Orlando",
+    "הוואי": "Hawaii", "אלסקה": "Alaska",
+    # קנדה
+    "טורונטו": "Toronto", "ונקובר": "Vancouver", "מונטריאול": "Montreal",
+    # אמריקה לטינית
+    "ריו דה ז'נרו": "Rio de Janeiro", "סאו פאולו": "São Paulo",
+    "בואנוס איירס": "Buenos Aires", "לימה": "Lima",
+    "בוגוטה": "Bogota", "קנקון": "Cancún", "מקסיקו סיטי": "Mexico City",
+    # אסיה
+    "טוקיו": "Tokyo", "קיוטו": "Kyoto", "אוסקה": "Osaka",
+    "סיאול": "Seoul", "שנגחאי": "Shanghai", "בייג'ינג": "Beijing",
+    "הונג קונג": "Hong Kong", "סינגפור": "Singapore",
+    "מומבאי": "Mumbai", "דלהי": "Delhi", "גואה": "Goa",
+    "קולומבו": "Colombo", "קטמנדו": "Kathmandu",
+    "ג'קרטה": "Jakarta", "באלי": "Bali", "מנילה": "Manila",
+    "האנוי": "Hanoi", "הו צ'י מין": "Ho Chi Minh City",
+    "קואלה לומפור": "Kuala Lumpur", "פנום פן": "Phnom Penh",
+    # אוסטרליה / ניו זילנד
+    "סידני": "Sydney", "מלבורן": "Melbourne", "אוקלנד": "Auckland",
+    # אפריקה / מזרח תיכון
+    "קייפטאון": "Cape Town", "ג'והנסבורג": "Johannesburg",
+    "מרקש": "Marrakech", "קהיר": "Cairo", "עמאן": "Amman",
+    "איסטנבול": "Istanbul", "אנטליה": "Antalya", "אנקרה": "Ankara",
+    "דובאי": "Dubai", "אבו דאבי": "Abu Dhabi",
+}
+
+def translate_location(name: str) -> str:
+    """Translate Hebrew city/location name to English for Monday."""
+    name = name.strip()
+    # Check city map first
+    if name in CITY_MAP:
+        return CITY_MAP[name]
+    # Check if it's actually a country name
+    country = COUNTRY_MAP.get(name)
+    if country:
+        return country[1]  # English country name
+    return name  # Return as-is if no translation found
 
 # Valid Monday event type labels
 MONDAY_EVENT_LABELS = ["נפשי", "איתור", "רפואי", "אנטישמיות", "אחר", "חילוץ", "חברות מחלצות"]
@@ -173,6 +296,50 @@ app.add_middleware(
 )
 
 client = anthropic.Anthropic()
+
+async def to_english_location(name: str) -> str:
+    """Translate any city/country name to English. Checks static maps first, then uses Claude."""
+    if not name or not name.strip():
+        return name
+    name = name.strip()
+    # Already English (ASCII only)
+    if all(ord(c) < 128 for c in name):
+        return name
+    # Check static maps first (fast, no API call)
+    if name in CITY_MAP:
+        return CITY_MAP[name]
+    if name in COUNTRY_MAP:
+        return COUNTRY_MAP[name][1]
+    # Fall back to Claude for anything not in the maps
+    def _call():
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=30,
+            messages=[{"role": "user", "content": (
+                f"Translate this city or country name to English. "
+                f"Reply with ONLY the English name, nothing else: {name}"
+            )}],
+        )
+        return resp.content[0].text.strip()
+    try:
+        return await asyncio.to_thread(_call)
+    except Exception:
+        return name
+
+
+async def resolve_country(name: str) -> tuple[str, str]:
+    """Return (ISO code, English name) for any country name (Hebrew or English).
+    Falls back to Claude for translation when not in COUNTRY_MAP."""
+    name = name.strip()
+    if name in COUNTRY_MAP:
+        return COUNTRY_MAP[name]
+    # Try English keys too (already in COUNTRY_MAP as English → same map)
+    en_name = await to_english_location(name)
+    # Look up the English name in COUNTRY_MAP
+    if en_name in COUNTRY_MAP:
+        return COUNTRY_MAP[en_name]
+    # If still not found, return empty code so Monday skips the column
+    return ("", en_name)
 
 SAR_SYSTEM_PROMPT_TEMPLATE = """אתה כונן קבלת אירועים של ארגון "חברים מחלצים" — ארגון המסייע לישראלים במצבי חירום בחו"ל.
 תפקידך לסייע לכונן לאסוף את כל המידע הדרוש לפתיחת אירוע בשיחה עם המתקשר.
@@ -374,13 +541,25 @@ def parse_report(text: str) -> dict:
 
 
 async def create_monday_item(fields: dict) -> tuple[bool, str]:
-    country_code, country_en = country_info(fields["country"])
     event_type  = normalize_event_type(fields["event_type"])
     insurance   = normalize_insurance(fields["insurance"])
     gender      = normalize_gender(fields["victim_gender"])
     operator    = normalize_operator(fields["operator"])
 
-    victim_name = fields.get("victim_name") or f"{event_type} | {fields['country']}"
+    PLACEHOLDERS = {"לא נמסר", "לא ידוע", "---", "N/A", ""}
+
+    # Resolve country → (ISO code, English name), using Claude if needed
+    country_raw = fields.get("country", "").strip()
+    if country_raw and country_raw not in PLACEHOLDERS:
+        country_code, country_en = await resolve_country(country_raw)
+    else:
+        country_code, country_en = "", ""
+
+    # Translate city to English; skip if placeholder
+    city_raw = fields.get("city", "").strip()
+    city_en  = await to_english_location(city_raw) if city_raw and city_raw not in PLACEHOLDERS else ""
+
+    victim_name = fields.get("victim_name") or f"{event_type} | {country_en}"
     item_name = victim_name
 
     def has(key: str) -> bool:
@@ -398,8 +577,8 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
         column_values["color_mkmby5dg"] = {"label": fields["month"]}
     if country_code and has("country"):
         column_values["country_mkmb91h3"] = {"countryCode": country_code, "countryName": country_en}
-    if has("city"):
-        column_values["location_mkmbv7be"] = {"address": fields["city"], "lat": 0, "lng": 0}
+    if city_en:
+        column_values["location_mkmbv7be"] = {"address": city_en, "lat": 0, "lng": 0}
     if has("date"):
         column_values["text_mkmbt7j5"] = fields["date"]
     if has("description"):
