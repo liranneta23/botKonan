@@ -548,12 +548,7 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
 
     PLACEHOLDERS = {"לא נמסר", "לא ידוע", "---", "N/A", ""}
 
-    # Resolve country → (ISO code, English name), using Claude if needed
-    country_raw = fields.get("country", "").strip()
-    if country_raw and country_raw not in PLACEHOLDERS:
-        country_code, country_en = await resolve_country(country_raw)
-    else:
-        country_code, country_en = "", ""
+    country_en = fields.get("country", "").strip()
 
     # Translate city to English; skip if placeholder
     city_raw = fields.get("city", "").strip()
@@ -575,8 +570,7 @@ async def create_monday_item(fields: dict) -> tuple[bool, str]:
         column_values["status_mkmb1zc6"] = {"label": event_type}
     if fields.get("month"):
         column_values["color_mkmby5dg"] = {"label": fields["month"]}
-    if country_code and has("country"):
-        column_values["country_mkmb91h3"] = {"countryCode": country_code, "countryName": country_en}
+    # country column — filled manually in Monday
     if city_en:
         column_values["location_mkmbv7be"] = {"address": city_en, "lat": 0, "lng": 0}
     if has("date"):
